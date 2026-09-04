@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Check-in">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#7C1233">
+<title>Guest check-in</title>
+<style>
+  :root{
+    --ink:#16181B; --muted:#666C73; --surface:#FFFFFF; --field:#F0F1F3;
+    --line:#DBDEE2; --maroon:#7C1233; --maroon-deep:#5A0C24;
+    --green:#146B48; --amber:#9A6300; --red:#B3261E; --r:12px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--surface);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:17px;line-height:1.4;overscroll-behavior-y:contain}
+  .wrap{max-width:560px;margin:0 auto;padding:0 18px 48px}
+  h1,h2,h3{margin:0;font-weight:650;letter-spacing:-0.01em}
+  button{font-family:inherit}
+
+  header{padding:calc(18px + env(safe-area-inset-top)) 0 14px;border-bottom:3px solid var(--maroon);position:relative}
+  .org{font-size:13px;color:var(--muted);margin-bottom:3px}
+  header h1{font-size:25px;line-height:1.15;padding-right:46px}
+  header .h2{font-size:21px;color:var(--maroon);margin-top:3px;padding-right:46px}
+  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  .gear{position:absolute;top:calc(14px + env(safe-area-inset-top));right:-8px;width:48px;height:48px;
+    border:0;background:transparent;color:#9AA0A6;font-size:21px;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center}
+  .gear:active{background:var(--field)}
+  .gear .dot{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--amber);display:none}
+  .gear.warn .dot{display:block}
+
+  form{margin-top:24px}
+  .f{margin-bottom:22px}
+  .f .l1{display:block;font-size:17px;font-weight:650;line-height:1.3}
+  .f .l2{display:block;font-size:16px;color:var(--muted);line-height:1.35;margin-top:2px}
+  .f .opt{font-weight:400;color:var(--muted)}
+  .f .l1,.f .l2{margin-bottom:0}
+  .f .inbox{margin-top:9px}
+  input:not([type=checkbox]),select,textarea{
+    width:100%;font-size:19px;font-family:inherit;color:var(--ink);background:var(--field);
+    border:2px solid transparent;border-radius:var(--r);padding:16px 14px;appearance:none;-webkit-appearance:none}
+  select{background-image:none}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--maroon);background:#fff;
+    box-shadow:0 0 0 3px rgba(124,18,51,.14)}
+  input.bad{border-color:var(--red);background:#FFF5F4}
+  .hint{font-size:14px;color:var(--amber);margin-top:7px;display:none}
+  .hint.on{display:block}
+
+  .step{display:flex;background:var(--field);border-radius:var(--r);overflow:hidden;height:58px}
+  .step button{width:76px;border:0;background:transparent;font-size:30px;color:var(--maroon);cursor:pointer;line-height:1}
+  .step button:active{background:#E2E4E7}
+  .step input{text-align:center;border-radius:0;background:transparent;flex:1;font-size:22px;font-weight:600;padding:0}
+
+  .save{width:100%;border:0;border-radius:var(--r);padding:21px 16px;font-size:20px;font-weight:700;
+    background:var(--maroon);color:#fff;cursor:pointer;margin-top:6px;line-height:1.25}
+  .save:active{background:var(--maroon-deep)}
+  .save .s2{display:block;font-size:17px;font-weight:500;opacity:.88;margin-top:2px}
+  .count{font-size:13px;color:var(--muted);text-align:center;margin-top:16px}
+  .count b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .toast{background:var(--ink);color:#fff;border-radius:var(--r);padding:14px 16px;margin-top:14px;
+    display:none;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+  .toast.on{display:flex}
+  .toast button{background:transparent;border:1.5px solid rgba(255,255,255,.55);color:#fff;
+    border-radius:9px;padding:9px 16px;font-size:15px;font-weight:600;cursor:pointer;flex:0 0 auto}
+
+  .done{position:fixed;inset:0;background:var(--green);color:#fff;z-index:60;display:none;
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px}
+  .done.on{display:flex}
+  .done .tick{font-size:72px;line-height:1}
+  .done h2{font-size:34px;margin:18px 0 4px}
+  .done .k2{font-size:29px;opacity:.95;line-height:1.25}
+  .done p{opacity:.9;margin-top:26px;font-size:17px;line-height:1.5;max-width:22em}
+  .done p span{display:block;margin-top:4px}
+  @media (prefers-reduced-motion:no-preference){.done.on{animation:fi .16s ease-out}@keyframes fi{from{opacity:0}to{opacity:1}}}
+
+  .panel{position:fixed;inset:0;background:var(--surface);z-index:50;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;display:none}
+  .panel.on{display:block}
+  .ptop{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:calc(16px + env(safe-area-inset-top)) 0 14px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--surface);z-index:2}
+  .ptop h2{font-size:20px}
+  .close{background:var(--field);border:0;border-radius:9px;padding:12px 18px;font-size:16px;font-weight:650;cursor:pointer}
+  .stat{display:flex;gap:10px;margin:18px 0}
+  .stat div{flex:1;background:var(--field);border-radius:var(--r);padding:13px}
+  .stat .n{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.25}
+  .sec{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+  .sec.first{border-top:0;padding-top:16px}
+  .sec h3{font-size:17px;margin-bottom:4px}
+  .sec .note{font-size:14.5px;color:var(--muted);margin-bottom:13px;line-height:1.45}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .b{flex:1 1 150px;border:0;border-radius:var(--r);padding:17px 14px;font-size:17px;font-weight:650;
+    background:var(--maroon);color:#fff;cursor:pointer}
+  .b:active{background:var(--maroon-deep)}
+  .b.ghost{background:var(--field);color:var(--ink)}
+  .b.ghost:active{background:#E2E4E7}
+  .b.danger{background:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap}
+  td.del{width:40px;text-align:right}
+  td.del button{background:transparent;border:0;color:var(--red);font-size:18px;cursor:pointer;padding:4px 6px}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  textarea.out{height:200px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--field);white-space:pre;overflow:auto;line-height:1.5}
+  .warnbox{background:#FFF7E6;border:1px solid #F0DDB0;border-radius:var(--r);padding:14px;font-size:14.5px;line-height:1.45}
+  .okbox{background:#EDF7F1;border:1px solid #BFE0CE;border-radius:var(--r);padding:12px 14px;font-size:14px;
+    color:#0E5136;margin-top:12px;display:none}
+  .okbox.on{display:block}
+
+  .fieldrow{background:var(--field);border-radius:var(--r);padding:13px;margin-bottom:11px}
+  .fieldrow input:not([type=checkbox]),.fieldrow select{background:#fff;font-size:17px;padding:13px 12px;margin-bottom:9px}
+  .fr2{display:flex;gap:9px;align-items:center}
+  .fr2 select{margin:0;flex:1;min-width:0}
+  .fr2 .reqlab{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;
+    white-space:nowrap;background:#fff;border-radius:9px;padding:12px 13px;cursor:pointer}
+  input[type=checkbox]{width:22px;height:22px;margin:0;accent-color:var(--maroon);appearance:auto;-webkit-appearance:checkbox;flex:0 0 auto}
+  .fr2 .x{background:#fff;border:0;color:var(--red);border-radius:9px;padding:13px 15px;font-size:17px;cursor:pointer;flex:0 0 auto}
+  .seg{display:flex;background:var(--field);border-radius:var(--r);padding:4px;gap:4px}
+  .seg button{flex:1;border:0;background:transparent;padding:14px 8px;border-radius:9px;font-size:16px;
+    font-weight:650;color:var(--muted);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+  details{margin-top:11px}
+  summary{font-size:15px;font-weight:600;color:var(--maroon);cursor:pointer;padding:9px 0;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"▸ ";font-size:13px}
+  details[open] summary:before{content:"▾ "}
+  .ui-grid label{display:block;font-size:13px;color:var(--muted);margin:9px 0 3px}
+  .ui-grid input{background:#fff;font-size:16px;padding:12px}
+  .lang-pick{margin-bottom:10px}
+  :focus-visible{outline:3px solid var(--maroon);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div id="entry" class="wrap">
+  <header>
+    <div class="org" id="orgLine"></div>
+    <h1 id="evName"></h1>
+    <div class="h2" id="evH2"></div>
+    <div class="meta" id="evMeta"></div>
+    <button class="gear" id="gearBtn" aria-label="Organiser settings">⚙<span class="dot"></span></button>
+  </header>
+  <form id="form" novalidate></form>
+  <div class="toast" id="toast"><span id="toastMsg"></span><button id="undoBtn" type="button">Undo</button></div>
+  <div class="count" id="countLine"></div>
+</div>
+
+<div class="done" id="done">
+  <div class="tick">✓</div>
+  <h2 id="dk1">Thank you</h2>
+  <div class="k2" id="dk2"></div>
+  <p><span id="dp1"></span><span id="dp2"></span></p>
+</div>
+
+<!-- ORGANISER -->
+<div class="panel" id="admin">
+  <div class="wrap">
+    <div class="ptop"><h2>Organiser</h2><button class="close" id="admClose" type="button">Done</button></div>
+
+    <div class="stat">
+      <div><div class="n" id="stTotal">0</div><div class="l">Entries</div></div>
+      <div><div class="n" id="stPeople">0</div><div class="l">People counted</div></div>
+      <div><div class="n" id="stNew">0</div><div class="l">Not yet sent</div></div>
+    </div>
+    <div class="warnbox" id="expWarn" style="display:none">Send a copy now. Nothing goes anywhere on its own, so this phone is the only place the list exists.</div>
+
+    <div class="sec first" style="border-top:1px solid var(--line);padding-top:20px">
+      <h3>Send the list</h3>
+      <div class="note">Share opens WhatsApp, Mail and the rest. Copy pastes straight into Excel.</div>
+      <div class="row">
+        <button class="b" id="shareBtn" type="button">Share the list</button>
+        <button class="b" id="copyBtn" type="button">Copy for Excel</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="b ghost" id="csvBtn" type="button">Download .csv</button>
+        <button class="b ghost" id="showBtn" type="button">Show as text</button>
+      </div>
+      <textarea class="out" id="outBox" style="display:none;margin-top:12px" readonly></textarea>
+    </div>
+
+    <div class="sec">
+      <h3>Station mode</h3>
+      <div class="note">Self-service shows a thank-you screen after each guest. Staff typing jumps straight to a blank form.</div>
+      <div class="seg" id="modeSeg">
+        <button data-m="kiosk" type="button">Self-service</button>
+        <button data-m="staff" type="button">Staff typing</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>Entries</h3>
+      <div class="note" id="listNote"></div>
+      <div class="scroll"><table id="tbl"></table></div>
+    </div>
+
+    <div class="sec">
+      <h3>Event, languages and questions</h3>
+      <div class="note">Editing these keeps everything already collected.</div>
+      <div class="row"><button class="b ghost" id="editBtn" type="button">Edit setup</button></div>
+      <div class="okbox" id="swBox">Saved for offline use. This will now open with no internet at all.</div>
+    </div>
+
+    <div class="sec">
+      <h3>Clear everything</h3>
+      <div class="note">Wipes the list from this phone. Send a copy first.</div>
+      <div class="row"><button class="b danger" id="wipeBtn" type="button">Clear all entries</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="panel" id="setup">
+  <div class="wrap">
+    <div class="ptop"><h2>Set up the station</h2><button class="close" id="setCancel" type="button" style="display:none">Cancel</button></div>
+
+    <div class="sec first">
+      <h3>Event</h3>
+      <div class="f" style="margin-top:12px"><label class="l1" for="sOrg">Organisation</label>
+        <div class="inbox"><input id="sOrg" placeholder="Ministry of Culture"></div></div>
+      <div class="f"><label class="l1" for="sName">Event name</label>
+        <div class="inbox"><input id="sName" placeholder="Filipino Community Cultural Evening"></div></div>
+      <div class="f"><label class="l1" for="sDate">Date shown on screen</label>
+        <div class="inbox"><input id="sDate" placeholder="4 September 2026"></div></div>
+      <div class="f"><label class="l1" for="sPin">Organiser PIN <span class="opt">— keeps guests out of the list</span></label>
+        <div class="inbox"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="4 digits"></div></div>
+    </div>
+
+    <div class="sec">
+      <h3>Languages on screen</h3>
+      <div class="note">Every guest sees both lines. Pick a language and the wording and question labels fill in. Change any of it by hand — have someone from the community read it before you start.</div>
+
+      <div class="lang-pick">
+        <label class="l1" style="font-size:15px;display:block;margin-bottom:6px">First line</label>
+        <select id="l1pick"></select>
+        <details id="l1det"><summary>Edit the wording</summary><div class="ui-grid" id="l1ui"></div></details>
+      </div>
+
+      <div class="lang-pick" style="margin-top:20px">
+        <label class="l1" style="font-size:15px;display:block;margin-bottom:6px">Second line</label>
+        <select id="l2pick"></select>
+        <details id="l2det"><summary>Edit the wording</summary><div class="ui-grid" id="l2ui"></div></details>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>What to ask each guest</h3>
+      <div class="note">Keep it short. Every extra question costs you people at the back of the queue.</div>
+      <div id="fieldList"></div>
+      <button class="b ghost" id="addField" type="button" style="width:100%">Add a question</button>
+    </div>
+
+    <div class="sec">
+      <div class="row"><button class="b" id="setSave" type="button">Start checking in</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+var KC="ckin_cfg_v2", KD="ckin_rows_v2";
+var LS=(function(){try{localStorage.setItem("__t","1");localStorage.removeItem("__t");return localStorage;}catch(e){return null;}})();
+
+/* u: t=title s=save k=thanks p=pass phone r=required o=optional   f: field labels */
+var LANGS={
+en :{n:"English",d:"ltr",u:{t:"Guest registration",s:"Save",k:"Thank you",p:"Please pass the phone to the next guest",r:"This is needed",o:"optional"},f:{name:"Full name",phone:"Mobile number",nat:"Nationality or community",people:"How many people are with you",email:"Email"}},
+fil:{n:"Filipino / Tagalog",d:"ltr",u:{t:"Pagpaparehistro ng bisita",s:"I-save",k:"Salamat po",p:"Pakipasa po ang telepono sa susunod na bisita",r:"Kailangan po itong sagutan",o:"opsyonal"},f:{name:"Buong pangalan",phone:"Numero ng telepono",nat:"Nasyonalidad o komunidad",people:"Ilan kayo sa grupo",email:"Email"}},
+ar :{n:"العربية Arabic",d:"rtl",u:{t:"تسجيل الحضور",s:"حفظ",k:"شكراً لك",p:"الرجاء تمرير الجهاز إلى الضيف التالي",r:"هذا الحقل مطلوب",o:"اختياري"},f:{name:"الاسم الكامل",phone:"رقم الجوال",nat:"الجنسية أو الجالية",people:"كم عدد الأشخاص معك",email:"البريد الإلكتروني"}},
+hi :{n:"हिन्दी Hindi",d:"ltr",u:{t:"अतिथि पंजीकरण",s:"सेव करें",k:"धन्यवाद",p:"कृपया फ़ोन अगले अतिथि को दें",r:"यह जानकारी ज़रूरी है",o:"वैकल्पिक"},f:{name:"पूरा नाम",phone:"मोबाइल नंबर",nat:"राष्ट्रीयता या समुदाय",people:"आपके साथ कितने लोग हैं",email:"ईमेल"}},
+ur :{n:"اردو Urdu",d:"rtl",u:{t:"مہمانوں کا اندراج",s:"محفوظ کریں",k:"شکریہ",p:"براہ کرم فون اگلے مہمان کو دیں",r:"یہ خانہ ضروری ہے",o:"اختیاری"},f:{name:"پورا نام",phone:"موبائل نمبر",nat:"قومیت یا کمیونٹی",people:"آپ کے ساتھ کتنے افراد ہیں",email:"ای میل"}},
+bn :{n:"বাংলা Bengali",d:"ltr",u:{t:"অতিথি নিবন্ধন",s:"সংরক্ষণ করুন",k:"ধন্যবাদ",p:"অনুগ্রহ করে ফোনটি পরের অতিথিকে দিন",r:"এই তথ্যটি প্রয়োজন",o:"ঐচ্ছিক"},f:{name:"পুরো নাম",phone:"মোবাইল নম্বর",nat:"জাতীয়তা বা সম্প্রদায়",people:"আপনার সাথে কতজন আছেন",email:"ইমেইল"}},
+ne :{n:"नेपाली Nepali",d:"ltr",u:{t:"पाहुना दर्ता",s:"सुरक्षित गर्नुहोस्",k:"धन्यवाद",p:"कृपया फोन अर्को पाहुनालाई दिनुहोस्",r:"यो जानकारी आवश्यक छ",o:"वैकल्पिक"},f:{name:"पूरा नाम",phone:"मोबाइल नम्बर",nat:"राष्ट्रियता वा समुदाय",people:"तपाईंसँग कति जना हुनुहुन्छ",email:"इमेल"}},
+ml :{n:"മലയാളം Malayalam",d:"ltr",u:{t:"അതിഥി രജിസ്ട്രേഷൻ",s:"സേവ് ചെയ്യുക",k:"നന്ദി",p:"ദയവായി ഫോൺ അടുത്ത അതിഥിക്ക് നൽകുക",r:"ഈ വിവരം ആവശ്യമാണ്",o:"ഐച്ഛികം"},f:{name:"പൂർണ്ണ നാമം",phone:"മൊബൈൽ നമ്പർ",nat:"ദേശീയത അല്ലെങ്കിൽ സമൂഹം",people:"നിങ്ങളോടൊപ്പം എത്ര പേരുണ്ട്",email:"ഇമെയിൽ"}},
+ta :{n:"தமிழ் Tamil",d:"ltr",u:{t:"விருந்தினர் பதிவு",s:"சேமிக்கவும்",k:"நன்றி",p:"தயவுசெய்து அடுத்த விருந்தினரிடம் தொலைபேசியை கொடுக்கவும்",r:"இந்தத் தகவல் தேவை",o:"விருப்பத்தேர்வு"},f:{name:"முழுப் பெயர்",phone:"கைபேசி எண்",nat:"தேசியம் அல்லது சமூகம்",people:"உங்களுடன் எத்தனை பேர்",email:"மின்னஞ்சல்"}},
+si :{n:"සිංහල Sinhala",d:"ltr",u:{t:"අමුත්තන් ලියාපදිංචිය",s:"සුරකින්න",k:"ස්තුතියි",p:"කරුණාකර දුරකථනය මීළඟ අමුත්තාට දෙන්න",r:"මෙම තොරතුරු අවශ්‍යයි",o:"අත්‍යවශ්‍ය නොවේ"},f:{name:"සම්පූර්ණ නම",phone:"දුරකථන අංකය",nat:"ජාතිකත්වය හෝ ප්‍රජාව",people:"ඔබ සමඟ කී දෙනෙක් සිටිනවාද",email:"විද්‍යුත් තැපෑල"}},
+id :{n:"Bahasa Indonesia",d:"ltr",u:{t:"Pendaftaran tamu",s:"Simpan",k:"Terima kasih",p:"Mohon berikan ponsel kepada tamu berikutnya",r:"Kolom ini wajib diisi",o:"opsional"},f:{name:"Nama lengkap",phone:"Nomor telepon",nat:"Kebangsaan atau komunitas",people:"Berapa orang bersama Anda",email:"Email"}},
+tr :{n:"Türkçe Turkish",d:"ltr",u:{t:"Misafir kaydı",s:"Kaydet",k:"Teşekkürler",p:"Lütfen telefonu bir sonraki misafire verin",r:"Bu alan zorunludur",o:"isteğe bağlı"},f:{name:"Ad soyad",phone:"Telefon numarası",nat:"Uyruk veya topluluk",people:"Yanınızda kaç kişi var",email:"E-posta"}},
+fa :{n:"فارسی Persian",d:"rtl",u:{t:"ثبت‌نام مهمانان",s:"ذخیره",k:"متشکریم",p:"لطفاً گوشی را به مهمان بعدی بدهید",r:"این فیلد الزامی است",o:"اختیاری"},f:{name:"نام کامل",phone:"شماره تلفن همراه",nat:"ملیت یا جامعه",people:"چند نفر همراه شما هستند",email:"ایمیل"}},
+fr :{n:"Français French",d:"ltr",u:{t:"Enregistrement des invités",s:"Enregistrer",k:"Merci",p:"Merci de passer le téléphone à l'invité suivant",r:"Ce champ est obligatoire",o:"facultatif"},f:{name:"Nom complet",phone:"Numéro de téléphone",nat:"Nationalité ou communauté",people:"Combien de personnes vous accompagnent",email:"E-mail"}},
+es :{n:"Español Spanish",d:"ltr",u:{t:"Registro de invitados",s:"Guardar",k:"Gracias",p:"Por favor, pase el teléfono al siguiente invitado",r:"Este campo es obligatorio",o:"opcional"},f:{name:"Nombre completo",phone:"Número de teléfono",nat:"Nacionalidad o comunidad",people:"Cuántas personas le acompañan",email:"Correo electrónico"}},
+sw :{n:"Kiswahili Swahili",d:"ltr",u:{t:"Usajili wa wageni",s:"Hifadhi",k:"Asante",p:"Tafadhali mpe simu mgeni anayefuata",r:"Sehemu hii inahitajika",o:"si lazima"},f:{name:"Jina kamili",phone:"Namba ya simu",nat:"Utaifa au jamii",people:"Mko watu wangapi",email:"Barua pepe"}},
+am :{n:"አማርኛ Amharic",d:"ltr",u:{t:"የእንግዶች ምዝገባ",s:"አስቀምጥ",k:"አመሰግናለሁ",p:"እባክዎ ስልኩን ለቀጣዩ እንግዳ ያስተላልፉ",r:"ይህ መረጃ ያስፈልጋል",o:"አማራጭ"},f:{name:"ሙሉ ስም",phone:"የስልክ ቁጥር",nat:"ዜግነት ወይም ማህበረሰብ",people:"ከእርስዎ ጋር ስንት ሰዎች አሉ",email:"ኢሜይል"}}
+};
+var UIKEYS=[["t","Heading under the event name"],["s","Save button"],["k","Thank you"],["p","Pass the phone to the next guest"],["r","Answer this question"],["o","Word for optional"]];
+var DEFFIELDS=[
+  {id:"name",key:"name",type:"text",req:true},
+  {id:"phone",key:"phone",type:"tel",req:true},
+  {id:"nat",key:"nat",type:"text",req:false},
+  {id:"people",key:"people",type:"count",req:false},
+  {id:"email",key:"email",type:"email",req:false}
+];
+
+var cfg=null, rows=[], toastTimer=null, doneTimer=null, dupOK=false, setupRTL2=false;
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function pad(n){return n<10?"0"+n:""+n}
+function L(slot,k){ var o=cfg&&cfg[slot]; return (o&&o.u&&o.u[k])||""; }
+
+function load(){
+  if(!LS) return;
+  try{cfg=JSON.parse(LS.getItem(KC)||"null")}catch(e){cfg=null}
+  try{rows=JSON.parse(LS.getItem(KD)||"[]")}catch(e){rows=[]}
+  if(!Array.isArray(rows)) rows=[];
+}
+function saveCfg(){ if(LS) try{LS.setItem(KC,JSON.stringify(cfg))}catch(e){alert("This phone refused to save the settings. Do not use it for the event.")} }
+function saveRows(){ if(LS) try{LS.setItem(KD,JSON.stringify(rows))}catch(e){alert("Storage is full or blocked. Send the list now before adding anyone else.")} }
+
+/* ================= SETUP ================= */
+function langOptions(sel,inclNone){
+  sel.innerHTML="";
+  if(inclNone){ var o=document.createElement("option"); o.value=""; o.textContent="None — one line only"; sel.appendChild(o); }
+  Object.keys(LANGS).forEach(function(k){
+    var o=document.createElement("option"); o.value=k; o.textContent=LANGS[k].n; sel.appendChild(o);
+  });
+}
+function uiInputs(slot,box,pack){
+  box.innerHTML="";
+  UIKEYS.forEach(function(p){
+    var l=document.createElement("label"); l.textContent=p[1]; l.setAttribute("for",slot+"_"+p[0]);
+    var i=document.createElement("input"); i.id=slot+"_"+p[0]; i.value=(pack&&pack.u&&pack.u[p[0]])||"";
+    if(pack&&pack.d==="rtl"){ i.dir="rtl"; }
+    box.appendChild(l); box.appendChild(i);
+  });
+}
+function readUI(slot){ var u={}; UIKEYS.forEach(function(p){ var e=document.getElementById(slot+"_"+p[0]); u[p[0]]=e?e.value.trim():""; }); return u; }
+
+function drawFields(list){
+  var box=$("#fieldList"); box.innerHTML="";
+  list.forEach(function(f,i){
+    var d=document.createElement("div"); d.className="fieldrow";
+    d.dataset.id=f.id||("f"+Date.now()+"_"+i);
+    d.dataset.key=f.key||"";
+    d.innerHTML=
+      '<input class="a1" placeholder="Question, first line">'+
+      '<input class="a2" placeholder="Same question, second line">'+
+      '<div class="fr2">'+
+        '<select class="ft"><option value="text">Text</option><option value="tel">Phone</option>'+
+        '<option value="email">Email</option><option value="count">Number of people</option></select>'+
+        '<label class="reqlab"><input type="checkbox" class="fq">Must answer</label>'+
+        '<button class="x" type="button" aria-label="Remove question">✕</button>'+
+      '</div>';
+    d.querySelector(".a1").value=f.l1||"";
+    d.querySelector(".a2").value=f.l2||"";
+    d.querySelector(".ft").value=f.type||"text";
+    d.querySelector(".fq").checked=!!f.req;
+    if(setupRTL2) d.querySelector(".a2").dir="rtl";
+    d.querySelector(".x").onclick=function(){ d.remove(); };
+    box.appendChild(d);
+  });
+}
+function readFields(){
+  var out=[];
+  document.querySelectorAll("#fieldList .fieldrow").forEach(function(d){
+    out.push({
+      id:d.dataset.id, key:d.dataset.key||"",
+      l1:d.querySelector(".a1").value.trim(),
+      l2:d.querySelector(".a2").value.trim(),
+      type:d.querySelector(".ft").value,
+      req:d.querySelector(".fq").checked
+    });
+  });
+  return out;
+}
+function applyLang(slot,code,force){
+  var pack=code?LANGS[code]:null;
+  var box=document.getElementById(slot.toLowerCase()+"ui");
+  uiInputs(slot,box,pack);
+  var cur=readFields();
+  cur.forEach(function(f){
+    var k=slot==="L1"?"l1":"l2";
+    if(!f.key) return;
+    if(force||!f[k]) f[k]= pack? (pack.f[f.key]||"") : "";
+  });
+  if(slot==="L2") setupRTL2=!!(pack&&pack.d==="rtl");
+  drawFields(cur);
+  var det=document.getElementById(slot.toLowerCase()+"det");
+  if(det) det.style.display=pack?"":"none";
+}
+function openSetup(editing){
+  var c=cfg||{org:"",name:"",date:"",pin:"1234",mode:"kiosk",
+    L1:{c:"en",d:"ltr",u:LANGS.en.u},L2:null,fields:null,exported:0};
+  $("#sOrg").value=c.org||""; $("#sName").value=c.name||"";
+  $("#sDate").value=c.date||""; $("#sPin").value=c.pin||"1234";
+
+  langOptions($("#l1pick"),false); langOptions($("#l2pick"),true);
+  $("#l1pick").value=(c.L1&&c.L1.c)||"en";
+  $("#l2pick").value=(c.L2&&c.L2.c)||"";
+
+  var flds=c.fields;
+  if(!flds||!flds.length){
+    var p1=LANGS[$("#l1pick").value];
+    flds=DEFFIELDS.map(function(f){ return {id:f.id,key:f.key,type:f.type,req:f.req,l1:p1.f[f.key],l2:""}; });
+  }
+  drawFields(flds);
+  uiInputs("L1",$("#l1ui"), c.L1||{u:LANGS.en.u,d:"ltr"});
+  uiInputs("L2",$("#l2ui"), c.L2||null);
+  setupRTL2=!!(c.L2&&c.L2.d==="rtl");
+  $("#l2det").style.display=(c.L2)?"":"none";
+  $("#setCancel").style.display=editing?"":"none";
+  $("#setup").classList.add("on");
+  $("#setup").scrollTop=0;
+}
+$("#l1pick").onchange=function(){ applyLang("L1",this.value,true); };
+$("#l2pick").onchange=function(){ applyLang("L2",this.value,true); };
+$("#addField").onclick=function(){
+  var cur=readFields();
+  cur.push({id:"f"+Date.now(),key:"",l1:"",l2:"",type:"text",req:false});
+  drawFields(cur);
+  var r=document.querySelectorAll("#fieldList .fieldrow");
+  if(r.length) r[r.length-1].querySelector(".a1").focus();
+};
+$("#setCancel").onclick=function(){ $("#setup").classList.remove("on"); };
+$("#setSave").onclick=function(){
+  var f=readFields().filter(function(x){return x.l1||x.l2});
+  if(!f.length){ alert("Add at least one question."); return; }
+  var c1=$("#l1pick").value||"en", c2=$("#l2pick").value||"";
+  cfg={
+    org:$("#sOrg").value.trim(),
+    name:$("#sName").value.trim()||"Guest check-in",
+    date:$("#sDate").value.trim(),
+    pin:($("#sPin").value||"").trim()||"1234",
+    mode:(cfg&&cfg.mode)||"kiosk",
+    L1:{c:c1,d:LANGS[c1].d,u:readUI("L1")},
+    L2:c2?{c:c2,d:LANGS[c2].d,u:readUI("L2")}:null,
+    fields:f,
+    exported:(cfg&&cfg.exported)||0
+  };
+  saveCfg();
+  $("#setup").classList.remove("on"); $("#admin").classList.remove("on");
+  renderAll();
+};
+
+/* ================= ENTRY ================= */
+function renderAll(){ renderHeader(); renderForm(); renderCount(); }
+function renderHeader(){
+  $("#orgLine").textContent=cfg.org||"";
+  $("#evName").textContent=cfg.name;
+  var h2=$("#evH2"); var t2=L("L2","t")||L("L1","t");
+  h2.textContent=cfg.L2?L("L2","t"):L("L1","t");
+  h2.dir=cfg.L2?cfg.L2.d:cfg.L1.d;
+  h2.style.display=t2?"":"none";
+  $("#evMeta").textContent=cfg.date||"";
+  $("#dk1").textContent=L("L1","k")||"Thank you";
+  var k2=$("#dk2"); k2.textContent=cfg.L2?L("L2","k"):""; k2.dir=cfg.L2?cfg.L2.d:"ltr";
+  $("#dp1").textContent=L("L1","p")||"";
+  var p2=$("#dp2"); p2.textContent=cfg.L2?L("L2","p"):""; p2.dir=cfg.L2?cfg.L2.d:"ltr";
+}
+function renderForm(){
+  var fm=$("#form"); fm.innerHTML=""; dupOK=false;
+  cfg.fields.forEach(function(f){
+    var d=document.createElement("div"); d.className="f";
+    var o1=f.req?"":' <span class="opt">— '+esc(L("L1","o")||"optional")+'</span>';
+    var l1=document.createElement("label"); l1.className="l1"; l1.setAttribute("for","i_"+f.id);
+    l1.innerHTML=esc(f.l1)+(f.l1?o1:""); l1.dir=cfg.L1.d;
+    if(f.l1) d.appendChild(l1);
+    if(f.l2 && cfg.L2){
+      var l2=document.createElement("span"); l2.className="l2"; l2.dir=cfg.L2.d;
+      l2.textContent=f.l2+((!f.req&&L("L2","o"))?" — "+L("L2","o"):"");
+      d.appendChild(l2);
+    }
+    var box=document.createElement("div"); box.className="inbox";
+    if(f.type==="count"){
+      var s=document.createElement("div"); s.className="step";
+      s.innerHTML='<button type="button" data-d="-1" aria-label="Fewer">−</button>'+
+        '<input id="i_'+f.id+'" inputmode="numeric" value="1" aria-label="'+esc(f.l1)+'">'+
+        '<button type="button" data-d="1" aria-label="More">+</button>';
+      s.querySelectorAll("button").forEach(function(b){
+        b.onclick=function(){ var inp=s.querySelector("input"); var n=parseInt(inp.value||"1",10);
+          if(isNaN(n))n=1; n+=parseInt(b.dataset.d,10); if(n<1)n=1; if(n>99)n=99; inp.value=n; };
+      });
+      box.appendChild(s);
+    } else {
+      var i=document.createElement("input"); i.id="i_"+f.id;
+      i.type=f.type==="tel"?"tel":f.type==="email"?"email":"text";
+      if(f.type==="tel"){ i.inputMode="tel"; i.autocomplete="tel"; }
+      else if(f.type==="email"){ i.inputMode="email"; i.autocomplete="email"; i.autocapitalize="off"; i.spellcheck=false; }
+      else { i.autocapitalize="words"; i.autocorrect="off"; i.spellcheck=false; if(f.key==="name") i.autocomplete="name"; }
+      i.enterKeyHint="next";
+      i.addEventListener("input",function(){ i.classList.remove("bad"); });
+      i.addEventListener("keydown",function(e){
+        if(e.key!=="Enter") return; e.preventDefault();
+        var all=Array.prototype.slice.call(document.querySelectorAll("#form input"));
+        var n=all.indexOf(i)+1;
+        if(n<all.length) all[n].focus(); else { i.blur(); submit(); }
+      });
+      box.appendChild(i);
+    }
+    d.appendChild(box);
+    var h=document.createElement("div"); h.className="hint"; h.id="h_"+f.id; d.appendChild(h);
+    fm.appendChild(d);
+  });
+  var b=document.createElement("button");
+  b.type="button"; b.className="save";
+  b.innerHTML=esc(L("L1","s")||"Save")+(cfg.L2?'<span class="s2" dir="'+cfg.L2.d+'">'+esc(L("L2","s"))+"</span>":"");
+  b.onclick=submit;
+  fm.appendChild(b);
+}
+$("#form").addEventListener("submit",function(e){e.preventDefault();});
+function val(id){ var e=document.getElementById("i_"+id); return e?e.value.trim():""; }
+function renderCount(){
+  var n=rows.length;
+  $("#countLine").innerHTML = n? ("<b>"+n+"</b> saved on this phone") : "Nothing saved yet";
+  $("#gearBtn").classList.toggle("warn",(n-(cfg.exported||0))>=25);
+}
+function submit(){
+  var miss=false,first=null;
+  cfg.fields.forEach(function(f){
+    var h=document.getElementById("h_"+f.id), el=document.getElementById("i_"+f.id);
+    if(h){h.classList.remove("on");h.textContent=""}
+    if(el) el.classList.remove("bad");
+    if(f.req && !val(f.id)){
+      miss=true; if(el){el.classList.add("bad"); if(!first) first=el;}
+      if(h){ h.textContent=(L("L1","r")||"This is needed")+(cfg.L2?" · "+L("L2","r"):""); h.classList.add("on"); }
+    }
+  });
+  if(miss){ if(first){ first.focus(); first.scrollIntoView({block:"center",behavior:"smooth"}); } return; }
+
+  var pf=null; cfg.fields.forEach(function(f){ if(!pf&&f.type==="tel") pf=f; });
+  if(pf && !dupOK){
+    var v=val(pf.id).replace(/\D/g,"");
+    if(v.length>=6 && rows.some(function(r){return String(r.v[pf.id]||"").replace(/\D/g,"")===v})){
+      dupOK=true;
+      var h=document.getElementById("h_"+pf.id), el=document.getElementById("i_"+pf.id);
+      if(h){ h.textContent="Already on the list. Tap save again to add anyway."; h.classList.add("on"); }
+      if(el){ el.classList.add("bad"); el.scrollIntoView({block:"center",behavior:"smooth"}); }
+      return;
+    }
+  }
+
+  var v={}; cfg.fields.forEach(function(f){ v[f.id]=val(f.id); });
+  rows.push({id:Date.now()+"_"+Math.random().toString(36).slice(2,7),ts:new Date().toISOString(),v:v});
+  saveRows(); renderCount(); renderForm();
+  if(cfg.mode==="staff"){
+    showToast("Saved. "+rows.length+" total.");
+    var fi=document.querySelector("#form input"); if(fi) fi.focus();
+  } else { showDone(); }
+}
+function showDone(){
+  var d=$("#done"); d.classList.add("on"); window.scrollTo(0,0);
+  clearTimeout(doneTimer);
+  doneTimer=setTimeout(function(){d.classList.remove("on")},2800);
+  d.onclick=function(){ clearTimeout(doneTimer); d.classList.remove("on"); };
+}
+function showToast(m){
+  $("#toastMsg").textContent=m; $("#toast").classList.add("on");
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){$("#toast").classList.remove("on")},9000);
+}
+$("#undoBtn").onclick=function(){ if(!rows.length) return; rows.pop(); saveRows(); renderCount(); $("#toast").classList.remove("on"); };
+
+/* ================= ORGANISER ================= */
+$("#gearBtn").onclick=function(){
+  var p=prompt("Organiser PIN");
+  if(p===null) return;
+  if(String(p).trim()!==String(cfg.pin)){ alert("Wrong PIN."); return; }
+  openAdmin();
+};
+function openAdmin(){
+  var cf=null; cfg.fields.forEach(function(f){ if(!cf&&f.type==="count") cf=f; });
+  var people=0;
+  rows.forEach(function(r){ var n=cf?parseInt(r.v[cf.id]||"1",10):1; if(isNaN(n)||n<1)n=1; people+=n; });
+  $("#stTotal").textContent=rows.length;
+  $("#stPeople").textContent=people;
+  var pend=rows.length-(cfg.exported||0);
+  $("#stNew").textContent=pend;
+  $("#expWarn").style.display=pend>=25?"":"none";
+  document.querySelectorAll("#modeSeg button").forEach(function(b){b.classList.toggle("on",b.dataset.m===cfg.mode)});
+  drawTable(); $("#outBox").style.display="none";
+  $("#admin").classList.add("on"); $("#admin").scrollTop=0;
+}
+$("#admClose").onclick=function(){ $("#admin").classList.remove("on"); };
+document.querySelectorAll("#modeSeg button").forEach(function(b){
+  b.onclick=function(){ cfg.mode=b.dataset.m; saveCfg();
+    document.querySelectorAll("#modeSeg button").forEach(function(x){x.classList.toggle("on",x===b)}); };
+});
+function drawTable(){
+  var t=$("#tbl"); t.innerHTML="";
+  $("#listNote").textContent=rows.length?"Newest first. Tap ✕ to remove a row.":"Nothing saved yet.";
+  if(!rows.length) return;
+  var hr=document.createElement("tr");
+  hr.innerHTML="<th>#</th>"+cfg.fields.map(function(f){return "<th>"+esc(f.l1||f.l2)+"</th>"}).join("")+"<th></th>";
+  t.appendChild(hr);
+  rows.slice().reverse().forEach(function(r,i){
+    var tr=document.createElement("tr");
+    tr.innerHTML="<td>"+(rows.length-i)+"</td>"+
+      cfg.fields.map(function(f){return "<td>"+esc(r.v[f.id]||"")+"</td>"}).join("")+
+      '<td class="del"><button type="button" aria-label="Remove">✕</button></td>';
+    tr.querySelector("button").onclick=function(){
+      if(!confirm("Remove this entry?")) return;
+      rows=rows.filter(function(x){return x.id!==r.id});
+      saveRows(); openAdmin(); renderCount();
+    };
+    t.appendChild(tr);
+  });
+}
+function tableText(sep){
+  var head=["#","Saved at"].concat(cfg.fields.map(function(f){return f.l1||f.l2}));
+  var out=[head];
+  rows.forEach(function(r,i){
+    var d=new Date(r.ts);
+    out.push([String(i+1),d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())]
+      .concat(cfg.fields.map(function(f){return r.v[f.id]||""})));
+  });
+  return out.map(function(l){return l.map(function(c){return q(c,sep)}).join(sep)}).join("\r\n");
+}
+function q(c,sep){ c=String(c==null?"":c);
+  if(sep==="\t") return c.replace(/[\t\r\n]/g," ");
+  return /[",\r\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }
+function fileStem(){
+  var s=(cfg.name||"checkin").replace(/[^\w\u0600-\u06FF ]+/g,"").trim().replace(/\s+/g,"-");
+  var d=new Date(); return (s||"checkin")+"-"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+}
+function markExported(){ cfg.exported=rows.length; saveCfg(); openAdmin(); renderCount(); }
+
+$("#shareBtn").onclick=function(){
+  if(!rows.length){ alert("Nothing to send yet."); return; }
+  var csv="\ufeff"+tableText(",");
+  try{
+    var f=new File([csv],fileStem()+".csv",{type:"text/csv"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){
+      navigator.share({files:[f],title:cfg.name}).then(markExported,function(){}); return;
+    }
+  }catch(e){}
+  if(navigator.share){
+    navigator.share({title:cfg.name,text:tableText("\t")}).then(markExported,function(){}); return;
+  }
+  alert("Sharing is not available here. Use Copy for Excel instead.");
+};
+$("#copyBtn").onclick=function(){
+  if(!rows.length){ alert("Nothing to copy yet."); return; }
+  var txt=tableText("\t");
+  function ok(){ markExported(); alert("Copied. Open Excel, tap a cell, then paste."); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(ok,function(){fallbackCopy(txt,ok)});
+  } else fallbackCopy(txt,ok);
+};
+function fallbackCopy(txt,ok){
+  var ta=$("#outBox"); ta.style.display=""; ta.readOnly=false; ta.value=txt;
+  ta.focus(); ta.setSelectionRange(0,txt.length);
+  try{ document.execCommand("copy"); ok(); }catch(e){ alert("Select the text below and copy it by hand."); }
+  ta.readOnly=true;
+}
+$("#csvBtn").onclick=function(){
+  if(!rows.length){ alert("Nothing to export yet."); return; }
+  try{
+    var b=new Blob(["\ufeff"+tableText(",")],{type:"text/csv;charset=utf-8"});
+    var u=URL.createObjectURL(b), a=document.createElement("a");
+    a.href=u; a.download=fileStem()+".csv"; document.body.appendChild(a); a.click();
+    setTimeout(function(){URL.revokeObjectURL(u);a.remove()},1500);
+    markExported();
+  }catch(e){ alert("Download failed on this browser. Use Share or Copy instead."); }
+};
+$("#showBtn").onclick=function(){
+  var ta=$("#outBox");
+  if(ta.style.display===""){ ta.style.display="none"; return; }
+  ta.style.display=""; ta.value=tableText("\t"); markExported();
+};
+$("#editBtn").onclick=function(){ openSetup(true); };
+$("#wipeBtn").onclick=function(){
+  if(!confirm("Delete all "+rows.length+" entries from this phone?")) return;
+  if(prompt('This cannot be undone. Type DELETE to confirm.')!=="DELETE") return;
+  rows=[]; cfg.exported=0; saveCfg(); saveRows(); openAdmin(); renderCount();
+};
+
+/* ================= offline + screen ================= */
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  navigator.serviceWorker.register("sw.js").then(function(){ $("#swBox").classList.add("on"); },function(){});
+}
+var wl=null;
+async function keepAwake(){ try{ if("wakeLock" in navigator) wl=await navigator.wakeLock.request("screen"); }catch(e){} }
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") keepAwake(); });
+document.addEventListener("click",keepAwake,{once:true});
+
+/* ================= boot ================= */
+load();
+if(!LS){
+  document.body.innerHTML='<div class="wrap"><header><h1>This browser is blocking storage</h1></header>'+
+    '<p style="margin-top:22px;line-height:1.5">Nothing typed here would be saved. Turn off Private Browsing and reload, '+
+    'or open this page from a normal Safari tab.</p></div>';
+} else if(!cfg){ openSetup(false); }
+else { renderAll(); }
+</script>
+</body>
+</html>
